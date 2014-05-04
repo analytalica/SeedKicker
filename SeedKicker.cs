@@ -43,7 +43,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "0.5.0";
+            return "0.5.4";
         }
 
         public string GetPluginAuthor()
@@ -58,8 +58,7 @@ namespace PRoConEvents
 
         public string GetPluginDescription()
         {
-            return @"<p>SeedKicker is a plugin that kicks specific players when the server has reached or exceeded a player set count.</p>
-<p><ul><li><b>To add or remove players:</b> Type a name in 'Add a soldier name' and that player will be considered a seeder. Clear a soldier name field and it will be removed from the list.</li>
+            return @"<p>SeedKicker is a plugin that kicks specific players when the server has reached or exceeded a player set count.</p><p><ul><li><b>To add or remove players:</b> Type a name in 'Add a soldier name' and that player will be considered a seeder. Clear a soldier name field and it will be removed from the list.</li>
 <li><b>Player Count Threshold:</b> Specifies the player count needed (larger than or equal to) before starting the kicking process.</li>
 <li><b>Min. Time Threshold is Met:</b> Specifices the minimum amount of time, in seconds, the player count must be larger than or equal to the threshold before kicking seeders.</li>
 <li><b>Kick Message:</b> The message seeders will see when kicked.</li></ul>
@@ -117,7 +116,8 @@ namespace PRoConEvents
                 if (this.playerCount >= this.threshold)
                 {
                     this.toConsole(2, "Threshold met at " + this.threshold + " with " + this.playerCount + " players online.");
-                    if (DateTime.Now.Subtract(this.then).Seconds >= this.minSeconds)
+                    this.toConsole(2, "It's been " + DateTime.Now.Subtract(this.then).TotalSeconds + " seconds since we met the threshold.");
+                    if ((int)DateTime.Now.Subtract(this.then).TotalSeconds >= this.minSeconds)
                     {
                         this.toConsole(1, "Kicking seeders...");
                         foreach (string seederName in seederList)
