@@ -31,6 +31,10 @@ namespace PRoConEvents
         private Timer kickTimer = new Timer();
         private Queue<String> kickQueue = new Queue<String>();
 
+        //SK 1.0
+        private int autoKickSeconds = 1800;
+        private DateTime playerJoinedTime = new DateTime();
+
         public SeedKicker()
         {
 
@@ -43,7 +47,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "0.5.5";
+            return "1.0.0";
         }
 
         public string GetPluginAuthor()
@@ -81,13 +85,14 @@ namespace PRoConEvents
 
         public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion)
         {
-            this.RegisterEvents(this.GetType().Name, "OnPluginLoaded", "OnServerInfo");
+            this.RegisterEvents(this.GetType().Name, "OnPluginLoaded", "OnServerInfo", "OnPlayerJoin");
             this.kickTimer = new Timer();
             this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
             this.kickTimer.Interval = 1500;
             this.kickTimer.Start();
             this.kickTimer.Stop();
             this.then = DateTime.Now;
+            this.playerJoinedTime = DateTime.Now;
         }
 
         public void OnPluginEnable()
@@ -100,6 +105,7 @@ namespace PRoConEvents
             this.kickTimer.Start();
             this.kickTimer.Stop();
             this.then = DateTime.Now;
+            this.playerJoinedTime = DateTime.Now;
         }
 
         public void OnPluginDisable()
@@ -107,6 +113,7 @@ namespace PRoConEvents
             this.toConsole(1, "SeedKicker Disabled!");
             this.kickTimer.Stop();
             this.then = DateTime.Now;
+            this.playerJoinedTime = DateTime.Now;
             this.pluginEnabled = false;
         }
 
@@ -115,6 +122,7 @@ namespace PRoConEvents
             if (pluginEnabled)
             {
                 this.playerCount = csiServerInfo.PlayerCount;
+
                 this.toConsole(2, "Refreshing player count: " + this.playerCount + " players found online.");
                 if (this.playerCount >= this.threshold)
                 {
@@ -122,18 +130,9 @@ namespace PRoConEvents
                     this.toConsole(2, "It's been " + DateTime.Now.Subtract(this.then).TotalSeconds + " seconds since we met the threshold.");
                     if ((int)DateTime.Now.Subtract(this.then).TotalSeconds >= this.minSeconds)
                     {
-                        this.toConsole(1, "Kicking seeders...");
-                        foreach (string seederName in seederList)
-                        {
-                            this.kickQueue.Enqueue(seederName);
-                        }
-
+                        this.toConsole(2, "We've met the player count threshold.");
+                        this.KickAllSeeders();
                         this.then = DateTime.Now;
-
-                        this.kickTimer = new Timer();
-                        this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
-                        this.kickTimer.Interval = 1500;
-                        this.kickTimer.Start();
                     }
                 }
                 else
@@ -142,14 +141,40 @@ namespace PRoConEvents
                     this.then = DateTime.Now;
                     this.kickTimer.Stop();
                 }
+                this.toConsole(2, "It's been " + (int)DateTime.Now.Subtract(this.playerJoinedTime).TotalSeconds + " seconds since a player joined.");
+                if ((int)DateTime.Now.Subtract(this.playerJoinedTime).TotalSeconds >= this.autoKickSeconds)
+                {
+                    this.toConsole(2, "It's been too long since a player has joined.");
+                    this.KickAllSeeders();
+                    this.playerJoinedTime = DateTime.Now;
+                }
             }
+        }
+
+        public override void OnPlayerJoin(string soldierName)
+        {
+            this.toConsole(2, "A new player has joined. Resetting last join time...");
+            this.playerJoinedTime = DateTime.Now;
+        }
+
+        public void KickAllSeeders()
+        {
+            this.toConsole(1, "Kicking seeders...");
+            foreach (string seederName in seederList)
+            {
+                this.kickQueue.Enqueue(seederName);
+            }
+            this.kickTimer = new Timer();
+            this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
+            this.kickTimer.Interval = 1500;
+            this.kickTimer.Start();
         }
 
         public void kickPlayers(object source, ElapsedEventArgs e)
         {
             if (this.kickQueue.Count > 0)
             {
-                this.toConsole(2, "Kicking...");
+                this.toConsole(3, "Kicking...");
                 this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", kickQueue.Dequeue(), kickMessage);
             }
             else
@@ -180,6 +205,7 @@ namespace PRoConEvents
             }
             lstReturn.Add(new CPluginVariable("Settings|Player Count Threshold", typeof(string), threshold.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Min. Time Threshold is Met (sec)", typeof(string), minSeconds.ToString()));
+            lstReturn.Add(new CPluginVariable("Settings|Auto Kick Timer Delay (sec) (0 to disable)", typeof(string), autoKickSeconds.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Kick Message", typeof(string), kickMessage));
             lstReturn.Add(new CPluginVariable("Settings|Debug Level", typeof(string), debugLevelString));
             return lstReturn;
@@ -254,6 +280,18 @@ namespace PRoConEvents
                 {
                     toConsole(1, "Invalid min seconds! Use integer values only.");
                     minSeconds = 60;
+                }
+            }
+            else if (strVariable.Contains("Auto Kick Timer Delay (sec)"))
+            {
+                try
+                {
+                    autoKickSeconds = Int32.Parse(strValue);
+                }
+                catch (Exception z)
+                {
+                    toConsole(1, "Invalid auto kick seconds! Use integer values only.");
+                    autoKickSeconds = 1800;
                 }
             }
         }
