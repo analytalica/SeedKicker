@@ -47,7 +47,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.0.0";
+            return "1.0.1";
         }
 
         public string GetPluginAuthor()
@@ -65,7 +65,8 @@ namespace PRoConEvents
             return @"<p>SeedKicker is a plugin that kicks specific players when the server has reached or exceeded a player set count.</p><p><ul><li><b>To add or remove players:</b> Type a name in 'Add a soldier name' and that player will be considered a seeder. Clear a soldier name field and it will be removed from the list.</li>
 <li><b>Player Count Threshold:</b> Specifies the player count needed (larger than or equal to) before starting the kicking process.</li>
 <li><b>Min. Time Threshold is Met:</b> Specifices the minimum amount of time, in seconds, the player count must be larger than or equal to the threshold before kicking seeders. NOTE: The actual kick delay may have up to a ~20 second variance.</li>
-<li><b>Kick Message:</b> The message seeders will see when kicked.</li></ul>
+<li><b>Kick Message:</b> The message seeders will see when kicked.</li>
+<li><b>Auto Kick Timer Delay (sec):</b> How much time since the last player joined until the seeders get auto-kicked to re-seed servers.</li></ul>
 </p>";
         }
 
