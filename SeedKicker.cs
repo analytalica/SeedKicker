@@ -34,6 +34,9 @@ namespace PRoConEvents
         //SK 1.0
         private int autoKickSeconds = 1800;
         private DateTime playerJoinedTime = new DateTime();
+        //Have we gone under the threshold?
+        private bool hasDipped = true;
+        private int lastDipped = 0;
 
         public SeedKicker()
         {
@@ -47,7 +50,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.0.1";
+            return "1.0.3";
         }
 
         public string GetPluginAuthor()
@@ -107,6 +110,7 @@ namespace PRoConEvents
             this.kickTimer.Stop();
             this.then = DateTime.Now;
             this.playerJoinedTime = DateTime.Now;
+            this.hasDipped = true;
         }
 
         public void OnPluginDisable()
@@ -115,6 +119,7 @@ namespace PRoConEvents
             this.kickTimer.Stop();
             this.then = DateTime.Now;
             this.playerJoinedTime = DateTime.Now;
+            this.hasDipped = true;
             this.pluginEnabled = false;
         }
 
@@ -131,14 +136,25 @@ namespace PRoConEvents
                     this.toConsole(2, "It's been " + DateTime.Now.Subtract(this.then).TotalSeconds + " seconds since we met the threshold.");
                     if ((int)DateTime.Now.Subtract(this.then).TotalSeconds >= this.minSeconds)
                     {
-                        this.toConsole(2, "We've met the player count threshold.");
-                        this.KickAllSeeders();
+                        this.toConsole(2, "Time threshold exceeded.");
+                        if (this.hasDipped || this.lastDipped > 10)
+                        {
+                            this.KickAllSeeders();
+                            this.hasDipped = false;
+                            this.lastDipped = 0;
+                        }
+                        else
+                        {
+                            this.toConsole(2, "All seeders were already kicked earlier, " + this.lastDipped + " refreshes ago. I'll kick again at 10.");
+                            this.lastDipped++;
+                        }
                         this.then = DateTime.Now;
                     }
                 }
                 else
                 {
                     this.toConsole(2, "Threshold not yet met.");
+                    this.hasDipped = true;
                     this.then = DateTime.Now;
                     this.kickTimer.Stop();
                 }
@@ -163,11 +179,14 @@ namespace PRoConEvents
             this.toConsole(1, "Kicking seeders...");
             foreach (string seederName in seederList)
             {
+                this.toConsole(2, "Enqueuing " + seederName);
                 this.kickQueue.Enqueue(seederName);
             }
             this.kickTimer = new Timer();
+            this.toConsole(3, "Kick timer initiated...");
             this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
-            this.kickTimer.Interval = 1500;
+            this.kickTimer.Interval = 2000;
+            this.toConsole(3, "Starting kick timer...");
             this.kickTimer.Start();
         }
 
@@ -175,13 +194,15 @@ namespace PRoConEvents
         {
             if (this.kickQueue.Count > 0)
             {
-                this.toConsole(3, "Kicking...");
-                this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", kickQueue.Dequeue(), kickMessage);
+                string nextPlayer = kickQueue.Dequeue();
+                this.toConsole(3, "Kicking " + nextPlayer);
+                this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", nextPlayer, kickMessage);
             }
             else
             {
                 this.toConsole(2, "All seeders kicked from server.");
                 this.kickTimer.Stop();
+                this.toConsole(3, "Kick timer stopped.");
             }
         }
 
@@ -209,6 +230,7 @@ namespace PRoConEvents
             lstReturn.Add(new CPluginVariable("Settings|Auto Kick Timer Delay (sec) (0 to disable)", typeof(string), autoKickSeconds.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Kick Message", typeof(string), kickMessage));
             lstReturn.Add(new CPluginVariable("Settings|Debug Level", typeof(string), debugLevelString));
+            lstReturn.Add(new CPluginVariable("Settings|Test Kick All Seeders", typeof(string), "Enter any text..."));
             return lstReturn;
         }
 
@@ -294,6 +316,10 @@ namespace PRoConEvents
                     toConsole(1, "Invalid auto kick seconds! Use integer values only.");
                     autoKickSeconds = 1800;
                 }
+            }
+            else if (strVariable.Contains("Test Kick All Seeders"))
+            {
+                KickAllSeeders();
             }
         }
     }
