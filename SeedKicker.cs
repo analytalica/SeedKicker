@@ -37,6 +37,7 @@ namespace PRoConEvents
         //Have we gone under the threshold?
         private bool hasDipped = true;
         private int lastDipped = 0;
+        private int maxSeedersAllowed = 4;
 
         public SeedKicker()
         {
@@ -50,7 +51,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.0.3";
+            return "1.1.0";
         }
 
         public string GetPluginAuthor()
@@ -89,7 +90,7 @@ namespace PRoConEvents
 
         public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion)
         {
-            this.RegisterEvents(this.GetType().Name, "OnPluginLoaded", "OnServerInfo", "OnPlayerJoin");
+            this.RegisterEvents(this.GetType().Name, "OnPluginLoaded", "OnServerInfo", "OnPlayerJoin", "OnListPlayers");
             this.kickTimer = new Timer();
             this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
             this.kickTimer.Interval = 1500;
@@ -121,6 +122,53 @@ namespace PRoConEvents
             this.playerJoinedTime = DateTime.Now;
             this.hasDipped = true;
             this.pluginEnabled = false;
+        }
+
+        public override void OnListPlayers(List<CPlayerInfo> players, CPlayerSubset subset)
+        {
+            if (this.pluginEnabled)
+            {
+                List<String> newOnlineList = new List<String>();
+                this.toConsole(2, "Player list obtained.");
+                foreach (CPlayerInfo player in players)
+                {
+                    if (seederList.Contains(player.SoldierName.Trim().ToLower()))
+                    {
+                        newOnlineList.Add(player.SoldierName.Trim());
+                    }
+                }
+                if (debugLevel > 1)
+                {
+                    this.toConsole(2, "" + newOnlineList.Count + " seeders found online: ");
+                    foreach (string name in newOnlineList)
+                    {
+                        this.toConsole(2, name);
+                    }
+                }
+                if (newOnlineList.Count > maxSeedersAllowed)
+                {
+                    int kickThisMany = newOnlineList.Count - maxSeedersAllowed;
+                    this.toConsole(2, "There are " + kickThisMany + " too many seeders on this server. Kicking some...");
+                    foreach (string seederName in seederList)
+                    {
+                        if (this.kickQueue.Count < kickThisMany)
+                        {
+                            this.toConsole(2, "Enqueuing " + seederName);
+                            this.kickQueue.Enqueue(seederName);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    this.kickTimer = new Timer();
+                    this.toConsole(3, "Kick timer initiated...");
+                    this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
+                    this.kickTimer.Interval = 2000;
+                    this.toConsole(3, "Starting kick timer...");
+                    this.kickTimer.Start();
+                }
+            }
         }
 
         public override void OnServerInfo(CServerInfo csiServerInfo)
@@ -200,7 +248,7 @@ namespace PRoConEvents
             }
             else
             {
-                this.toConsole(2, "All seeders kicked from server.");
+                this.toConsole(2, "Seeders kicked from server.");
                 this.kickTimer.Stop();
                 this.toConsole(3, "Kick timer stopped.");
             }
@@ -229,6 +277,7 @@ namespace PRoConEvents
             lstReturn.Add(new CPluginVariable("Settings|Min. Time Threshold is Met (sec)", typeof(string), minSeconds.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Auto Kick Timer Delay (sec) (0 to disable)", typeof(string), autoKickSeconds.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Kick Message", typeof(string), kickMessage));
+            lstReturn.Add(new CPluginVariable("Settings|Maximum Seeders Allowed On Server", typeof(string), maxSeedersAllowed.ToString()));
             lstReturn.Add(new CPluginVariable("Settings|Debug Level", typeof(string), debugLevelString));
             lstReturn.Add(new CPluginVariable("Settings|Test Kick All Seeders", typeof(string), "Enter any text..."));
             return lstReturn;
@@ -315,6 +364,18 @@ namespace PRoConEvents
                 {
                     toConsole(1, "Invalid auto kick seconds! Use integer values only.");
                     autoKickSeconds = 1800;
+                }
+            }
+            else if (strVariable.Contains("Maximum Seeders Allowed On Server"))
+            {
+                try
+                {
+                    maxSeedersAllowed = Int32.Parse(strValue);
+                }
+                catch (Exception z)
+                {
+                    toConsole(1, "Invalid max seeders! Use integer values only.");
+                    maxSeedersAllowed = 4;
                 }
             }
             else if (strVariable.Contains("Test Kick All Seeders"))
