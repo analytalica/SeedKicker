@@ -51,7 +51,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.1.1";
+            return "1.1.2";
         }
 
         public string GetPluginAuthor()
@@ -211,7 +211,7 @@ namespace PRoConEvents
                     this.kickTimer.Stop();
                 }
                 this.toConsole(2, "It's been " + (int)DateTime.Now.Subtract(this.playerJoinedTime).TotalSeconds + " seconds since a player joined.");
-                if ((int)DateTime.Now.Subtract(this.playerJoinedTime).TotalSeconds >= this.autoKickSeconds)
+                if (this.autoKickSeconds != 0 && (int)DateTime.Now.Subtract(this.playerJoinedTime).TotalSeconds >= this.autoKickSeconds)
                 {
                     this.toConsole(2, "It's been too long since a player has joined.");
                     this.KickAllSeeders();
