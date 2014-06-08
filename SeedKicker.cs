@@ -51,7 +51,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.1.2";
+            return "1.1.5";
         }
 
         public string GetPluginAuthor()
@@ -98,10 +98,11 @@ namespace PRoConEvents
             this.kickTimer = new Timer();
             this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
             this.kickTimer.Interval = 1500;
-            this.kickTimer.Start();
+            //this.kickTimer.Start();
             this.kickTimer.Stop();
             this.then = DateTime.Now;
             this.playerJoinedTime = DateTime.Now;
+            this.kickQueue.Clear();
         }
 
         public void OnPluginEnable()
@@ -111,11 +112,12 @@ namespace PRoConEvents
             this.kickTimer = new Timer();
             this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
             this.kickTimer.Interval = 2000;
-            this.kickTimer.Start();
+            //this.kickTimer.Start();
             this.kickTimer.Stop();
             this.then = DateTime.Now;
             this.playerJoinedTime = DateTime.Now;
             this.hasDipped = true;
+            this.kickQueue.Clear();
         }
 
         public void OnPluginDisable()
@@ -126,6 +128,7 @@ namespace PRoConEvents
             this.playerJoinedTime = DateTime.Now;
             this.hasDipped = true;
             this.pluginEnabled = false;
+            this.kickQueue.Clear();
         }
 
         public override void OnListPlayers(List<CPlayerInfo> players, CPlayerSubset subset)
@@ -153,7 +156,7 @@ namespace PRoConEvents
                 {
                     int kickThisMany = newOnlineList.Count - maxSeedersAllowed;
                     this.toConsole(2, "There are " + kickThisMany + " too many seeders on this server. Kicking some...");
-                    foreach (string seederName in seederList)
+                    foreach (string seederName in newOnlineList)
                     {
                         if (this.kickQueue.Count < kickThisMany)
                         {
@@ -228,33 +231,39 @@ namespace PRoConEvents
 
         public void KickAllSeeders()
         {
-            this.toConsole(1, "Kicking seeders...");
-            foreach (string seederName in seederList)
+            if (pluginEnabled)
             {
-                this.toConsole(2, "Enqueuing " + seederName);
-                this.kickQueue.Enqueue(seederName);
+                this.toConsole(1, "Kicking seeders...");
+                foreach (string seederName in seederList)
+                {
+                    this.toConsole(2, "Enqueuing " + seederName);
+                    this.kickQueue.Enqueue(seederName);
+                }
+                this.kickTimer = new Timer();
+                this.toConsole(3, "Kick timer initiated...");
+                this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
+                this.kickTimer.Interval = 2000;
+                this.toConsole(3, "Starting kick timer...");
+                this.kickTimer.Start();
             }
-            this.kickTimer = new Timer();
-            this.toConsole(3, "Kick timer initiated...");
-            this.kickTimer.Elapsed += new ElapsedEventHandler(this.kickPlayers);
-            this.kickTimer.Interval = 2000;
-            this.toConsole(3, "Starting kick timer...");
-            this.kickTimer.Start();
         }
 
         public void kickPlayers(object source, ElapsedEventArgs e)
         {
-            if (this.kickQueue.Count > 0)
+            if (pluginEnabled)
             {
-                string nextPlayer = kickQueue.Dequeue();
-                this.toConsole(3, "Kicking " + nextPlayer);
-                this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", nextPlayer, kickMessage);
-            }
-            else
-            {
-                this.toConsole(2, "Seeders kicked from server.");
-                this.kickTimer.Stop();
-                this.toConsole(3, "Kick timer stopped.");
+                if (this.kickQueue.Count > 0)
+                {
+                    string nextPlayer = kickQueue.Dequeue();
+                    this.toConsole(3, "Kicking " + nextPlayer);
+                    this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", nextPlayer, kickMessage);
+                }
+                else
+                {
+                    this.toConsole(2, "Seeders kicked from server.");
+                    this.kickTimer.Stop();
+                    this.toConsole(3, "Kick timer stopped.");
+                }
             }
         }
 
