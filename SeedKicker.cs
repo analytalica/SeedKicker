@@ -51,7 +51,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "1.1.5";
+            return "1.1.6";
         }
 
         public string GetPluginAuthor()
@@ -225,8 +225,11 @@ namespace PRoConEvents
 
         public override void OnPlayerJoin(string soldierName)
         {
-            this.toConsole(2, "A new player has joined. Resetting last join time...");
-            this.playerJoinedTime = DateTime.Now;
+            if (pluginEnabled)
+            {
+                this.toConsole(2, "A new player has joined. Resetting last join time...");
+                this.playerJoinedTime = DateTime.Now;
+            }
         }
 
         public void KickAllSeeders()
